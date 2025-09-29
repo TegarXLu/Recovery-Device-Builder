@@ -82,12 +82,12 @@ jobs:
         swap-size-gb: 24
       
     - name: Build Environment
-      run: |
-        sudo apt update
-        sudo apt -y upgrade
-        git clone https://gitlab.com/OrangeFox/misc/scripts
-        cd scripts
-        sudo bash setup/android_build_env.sh
+       run: |
+         sudo apt update
+         sudo apt -y upgrade
+         git clone --depth 1 https://gitlab.com/OrangeFox/misc/scripts orangefox-scripts
+         cd orangefox-scripts
+         sudo bash setup/android_build_env.sh
       
     - name: Set-up Manifest
       if: github.event.inputs.MANIFEST_BRANCH == '11.0' || github.event.inputs.MANIFEST_BRANCH == '12.1' || github.event.inputs.MANIFEST_BRANCH == '14.1'
