@@ -136,17 +136,6 @@ jobs:
     # --- Placeholder: continue with the rest of your original workflow steps (repo init, repo sync, repo manifest setup, device tree checkout, lunch, build, upload artifacts) ---
     # Add or paste the remaining steps you already have after "Prepare the environment" here.
 
-    - name: Ensure python2 + nsjail
-      run: |
-        sudo apt update
-        sudo apt install -y python2 || true
-        if ! command -v python2.7 >/dev/null 2>&1 && command -v python2 >/dev/null 2>&1; then
-          sudo ln -s "$(command -v python2)" /usr/bin/python2.7 || true
-        fi
-        # optional try enable userns (will likely fail on hosted runners)
-        sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
-        sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
-
     - name: Install OpenJDK
       uses: actions/setup-java@v4
       with:
