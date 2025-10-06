@@ -71,6 +71,57 @@ jobs:
       uses: rokibhasansagar/slimhub_actions@main
       # That's it! Now use your normal steps
 
+    - name: Ensure python2 + nsjail (best-effort)
+      run: |
+        set -euo pipefail
+        echo "==> Trying to install python2 (if available in repos)"
+        sudo apt update || true
+
+        # Try common package names
+        sudo apt install -y python2 || sudo apt install -y python2-minimal || true
+
+        # If python2 is present but python2.7 not, create a safe symlink
+        if command -v python2 >/dev/null 2>&1; then
+          echo "python2 found: $(command -v python2)"
+          if ! command -v python2.7 >/dev/null 2>&1; then
+            echo "Creating /usr/bin/python2.7 -> $(command -v python2)"
+            sudo ln -sf "$(command -v python2)" /usr/bin/python2.7 || true
+          fi
+        else
+          echo "python2 not available via apt. Continuing without python2 (some build steps may disable sandboxing)."
+        fi
+
+        echo "python2 --version: $(python2 --version 2>&1 || echo 'not installed')"
+        echo "python2.7 --version: $(python2.7 --version 2>&1 || echo 'not installed')"
+
+        # Try to ensure nsjail binary exists. Build from source if not present.
+        if ! command -v nsjail >/dev/null 2>&1; then
+          echo "nsjail not found — attempting to build a local nsjail (best-effort)."
+          sudo apt install -y build-essential autoconf libtool golang-go protobuf-compiler libprotobuf-dev cmake git pkg-config || true
+          TMP_NSJAIL_DIR=$(mktemp -d)
+          git clone --depth=1 https://github.com/google/nsjail.git "$TMP_NSJAIL_DIR" || true
+          if [ -d "$TMP_NSJAIL_DIR" ]; then
+            pushd "$TMP_NSJAIL_DIR" >/dev/null || true
+            make || true
+            if [ -f nsjail ]; then
+              sudo cp nsjail /usr/local/bin/ || true
+              echo "nsjail built and copied to /usr/local/bin"
+            else
+              echo "Failed to build nsjail; continuing (sandboxing may be disabled by Soong)."
+            fi
+            popd >/dev/null || true
+          fi
+        else
+          echo "nsjail already installed: $(command -v nsjail)"
+        fi
+
+        # Try hint to enable unprivileged user namespaces (will likely fail on hosted runners)
+        echo "Attempting to enable unprivileged userns (may fail on hosted runners)..."
+        sudo sysctl -w kernel.unprivileged_userns_clone=1 || echo "Could not change kernel.unprivileged_userns_clone (likely restricted on hosted runner)."
+        sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || echo "Could not change AppArmor userns restriction (likely restricted)."
+
+        echo "Done ensure step. Continue with normal prepare step."
+
     - name: Prepare the environment
       run: |
         sudo apt update && sudo apt upgrade -y
@@ -81,6 +132,9 @@ jobs:
             xsltproc bc ccache lib32readline-dev lib32z1-dev liblz4-tool libncurses-dev libsdl1.2-dev \
             build-essential libgtk-3-dev libglu1-mesa-dev freeglut3-dev git libxml2 lzop pngcrush schedtool squashfs-tools \
             imagemagick libbz2-dev lzma ncftp qemu-user-static libstdc++-10-dev libncurses6 python3 tar
+
+    # --- Placeholder: continue with the rest of your original workflow steps (repo init, repo sync, repo manifest setup, device tree checkout, lunch, build, upload artifacts) ---
+    # Add or paste the remaining steps you already have after "Prepare the environment" here.
 
     - name: Ensure python2 + nsjail
       run: |
